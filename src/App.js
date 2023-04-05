@@ -48,6 +48,8 @@ const App = () => {
 
     useEffect(() => {
         let jsonData = {"username": inputUsername, "password": inputPassword};
+        console.log(jsonData);
+
         fetch(`http://142.93.251.255:8080/user/login`, {
                 method: 'POST',
                 headers: {
@@ -121,6 +123,8 @@ const App = () => {
         return <Login onLogin={(username, password) => {
             setInputUsername(username);
             setInputPassword(password);
+            console.log(username);
+            console.log(password);
         }} />;
     }
 

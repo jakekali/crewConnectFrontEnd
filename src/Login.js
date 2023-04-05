@@ -37,7 +37,8 @@ const Login = ({onLogin}) => {
 
     // Login handler
 
-    const handleLogin = () => {
+    const handleLogin = (e) => {
+        e.preventDefault();
         onLogin(username, password);
     };
 

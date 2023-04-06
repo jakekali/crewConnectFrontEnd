@@ -12,44 +12,45 @@ let newChatId = 3; // ID used for new chats
 
 // Static Data for testing
 
-let test_chats = [
-    {
-        id: 1,
-        users: ["User 1", "User 2"],
-        name: 'Group Chat 1',
-        messages: [
-            { sender: 'User 1', text: 'Hello' },
-            { sender: 'User 2', text: 'Hi there' },
-        ],
-    },
-    {
-        id: 2,
-        users: ["User 1", "User 2"],
-        name: 'Group Chat 2',
-        messages: [
-            { sender: 'User 1', text: 'Hey' },
-            { sender: 'User 2', text: 'What\'s up?' },
-        ],
-    },
-];
+// let test_chats = [
+//     {
+//         id: 1,
+//         users: ["User 1", "User 2"],
+//         name: 'Group Chat 1',
+//         messages: [
+//             { sender: 'User 1', text: 'Hello' },
+//             { sender: 'User 2', text: 'Hi there' },
+//         ],
+//     },
+//     {
+//         id: 2,
+//         users: ["User 1", "User 2"],
+//         name: 'Group Chat 2',
+//         messages: [
+//             { sender: 'User 1', text: 'Hey' },
+//             { sender: 'User 2', text: 'What\'s up?' },
+//         ],
+//     },
+// ];
 
 // Main application
 
 const App = () => {
 
     // Variable Declarations
-
     const [loggedIn, setLoggedIn] = useState(false); // Boolean for logging in
     const [selectedChatId, setSelectedChatId] = useState(null); // Integer for chat selection
-    const [chats, setChats] = useState(test_chats); // List of chats    
+    const [chats, setChats] = useState([]); // List of chats    
     const [inputUsername, setInputUsername] = useState("");
     const [inputPassword, setInputPassword] = useState("");
-    let id = 0;
-
+    const [id, setId] = useState(0); // Add this line to manage `id` using useState
+    
+    // First useEffect hook
     useEffect(() => {
+        if (!inputUsername || !inputPassword) return;
+    
         let jsonData = {"username": inputUsername, "password": inputPassword};
         console.log(jsonData);
-
         fetch(`http://142.93.251.255:8080/user/login`, {
                 method: 'POST',
                 headers: {
@@ -62,60 +63,65 @@ const App = () => {
             if (!response.ok) {
                 const error = (data && data.message) || response.statusText;
                 return console.error(error);
-            }
-
-            else {
+            } else {
                 setLoggedIn(true);
-                id = data["userId"];
-                fetch(`http://142.93.251.255:8080/groupchats/id/`+id, {
-                    method: 'GET',
-                    headers: {
-                        "Content-Type": "application/json"
-                    }
-                }).then(async response => {
-                    const data = await response.json();
-                    data.forEach(entry => 
-                        setChats([...chats, { 
-                            id: entry["groupChatId"], 
-                            users: ["ugh"], 
-                            name: entry["groupName"], 
-                            messages: []}])
-                    );
-                });
+                setId(data["userId"]); // Update this line to use setId
+                console.log(id);
             }
         });
-
+    
     }, [inputUsername, inputPassword]);
 
     useEffect(() => {
-        let name = chats[chats.length-1].name;
-        fetch(`http://142.93.251.255:8080/groupchat/newGroupName/`+name+"/size/0/date/"+"um", {
-                method: 'POST',
-                headers: {
-                    "Content-Type": "application/json"
-                },
-        });
-        fetch(`http://142.93.251.255:8080/groupchat/`+name, {
+        if (!loggedIn) return;
+        console.log("got here 1");
+        const fetchGroupChatUsers = async (groupChatId) => {
+            console.log("got here 2");
+            const response = await fetch(`http://142.93.251.255:8080/message/id/` + groupChatId, {
                 method: 'GET',
                 headers: {
                     "Content-Type": "application/json"
-                },
-        }).then(async response => {
+                }
+            });
             const data = await response.json();
-            fetch(`http://142.93.251.255:8080/groupchat/gcId1/`+data["groupChatId"]+"/userId1/"+id, {
-                method: 'PUT',
+            return data.map(user => user.username);
+        };
+    
+        const fetchGroupChatMessages = async (groupChatId) => {
+            const response = await fetch(`http://142.93.251.255:8080/message/groupID/` + groupChatId, {
+                method: 'GET',
                 headers: {
                     "Content-Type": "application/json"
-                },
-            }); 
-            data.forEach(entry => 
-                // add each user to group chat.
-                console.log("entry")
-            );
-        });
-        
-    }, [chats])
+                }
+            });
+            const data = await response.json();
+            return data.map(message => ({ sender: message.userId, text: message.message }));
+        };
     
+        const fetchGroupChats = async () => {
+            console.log("got here 3");
+            const response = await fetch(`http://142.93.251.255:8080/groupchats/id/` + id, {
+                method: 'GET',
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+            const data = await response.json();
+            const newChats = await Promise.all(data.map(async entry => {
+                const users = await fetchGroupChatUsers(entry["groupChatId"]);
+                const messages = await fetchGroupChatMessages(entry["groupChatId"]);
+                return {
+                    id: entry["groupChatId"],
+                    users,
+                    name: entry["groupName"],
+                    messages,
+                };
+            }));
+            setChats(newChats);
+        };
+    
+        fetchGroupChats();
+    }, [loggedIn, id]);
 
     // Showing the login page
 
@@ -123,8 +129,6 @@ const App = () => {
         return <Login onLogin={(username, password) => {
             setInputUsername(username);
             setInputPassword(password);
-            console.log(username);
-            console.log(password);
         }} />;
     }
 
@@ -142,25 +146,63 @@ const App = () => {
 
     // Handler for creating a new chat
 
-    const handleCreateChat = (users, name) => {
-        const newChat = { id: newChatId, users, name, messages: []};
-        setChats([...chats, newChat]);
-        setSelectedChatId(newChatId++);
-    };
-
+    const handleCreateChat = async (users, name) => {
+        const currentDate = Math.floor(Date.now() / 1000);
+        console.log(users);
+        try {
+          // Create the new group chat
+          const response = await fetch(`http://142.93.251.255:8080/groupchat/newGroupName/` + name + "/size/" + users.length + "/date/" + currentDate.toString(), {
+            method: 'POST',
+            headers: {
+                "Content-Type": "application/json",
+            },
+          }).catch(error => console.error("Error in creating group chat fetch:", error));
+          
+          const data = await response.json();
+          const groupChatId = data["groupChatId"];
+      
+          // Add users to the group chat
+          for (const user of users) {
+            await fetch(`http://142.93.251.255:8080/groupchat/gcId1/` + groupChatId + "/userId1/" + user.userId, {
+              method: 'PUT',
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }).catch(error => console.error("Error in adding users fetch:", error));
+          }
+      
+          const newChat = { id: groupChatId, users, name, messages: [] };
+          setChats([...chats, newChat]);
+          setSelectedChatId(groupChatId);
+      
+        } catch (error) {
+          console.error("Error creating new chat:", error);
+        }
+      };
     
-    const handleSendMessage = (chatId, message) => {
-        const newChats = chats.map((chat) => {
-            if (chat.id === chatId) {
-                return {
-                    ...chat,
-                    messages: [...chat.messages, { sender: "You", text: message }]
-                };
-            }
-            return chat;
+    const handleSendMessage = async (message) => {
+    try {
+        const messageToSend = {
+            groupChatId: selectedChatId,
+            userId: id,
+            message: message,
+            timeSent: Math.floor(Date.now() / 1000),
+        };
+        console.log(messageToSend);
+    
+        // Send the message to the server
+        const response = await fetch("http://142.93.251.255:8080/message", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(messageToSend),
         });
-        setChats(newChats);
+    } catch (error) {
+        console.error("Error sending message:", error);
+        }   
     };
+      
 
     
 
@@ -187,7 +229,7 @@ const App = () => {
             />
             <ChatList
                 chats={chats}
-                onSelect={handleSelectChat}
+                onSelect={chatId => handleSelectChat(chatId)}
             />
             <button onClick={handleLogout} className="bottom">Log Out</button>
         </div>

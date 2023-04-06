@@ -45,7 +45,7 @@ const App = () => {
     const [inputPassword, setInputPassword] = useState("");
     const [id, setId] = useState(0); // Add this line to manage `id` using useState
     
-    // First useEffect hook
+    // use effect hook for login
     useEffect(() => {
         if (!inputUsername || !inputPassword) return;
     
@@ -72,9 +72,9 @@ const App = () => {
     
     }, [inputUsername, inputPassword]);
 
+    // use effect hook for getting groupchats and contents
     useEffect(() => {
         if (!loggedIn) return;
-        console.log("got here 1");
         const fetchGroupChatUsers = async (groupChatId) => {
             console.log("got here 2");
             const response = await fetch(`http://142.93.251.255:8080/message/id/` + groupChatId, {
@@ -124,7 +124,6 @@ const App = () => {
     }, [loggedIn, id]);
 
     // Showing the login page
-
     if (!loggedIn) {
         return <Login onLogin={(username, password) => {
             setInputUsername(username);
@@ -133,19 +132,16 @@ const App = () => {
     }
 
     // Handler for logging out
-
     const handleLogout = () => {
         setLoggedIn(false);
     };
 
     // Handler for clicking on a chat to view it
-
     const handleSelectChat = (chatId) => {
         setSelectedChatId(chatId);
     };
 
-    // Handler for creating a new chat
-
+    // Handler for creating a new chat, this doesn't work yet!!!!
     const handleCreateChat = async (users, name) => {
         const currentDate = Math.floor(Date.now() / 1000);
         console.log(users);
@@ -204,10 +200,7 @@ const App = () => {
     };
       
 
-    
-
     // Showing the selected chat
-
     if (selectedChatId) {
         const selectedChat = chats.find((chat) => chat.id === selectedChatId);
         return ( <Chat 
@@ -219,7 +212,6 @@ const App = () => {
     }
 
     // Return main HTML for home page
-
     return (
         <div className='page'>
             <h1>CrewConnect</h1>
